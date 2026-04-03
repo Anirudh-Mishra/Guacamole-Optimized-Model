@@ -1,0 +1,5 @@
+numpy 
+safetensors 
+torch
+openai
+python-dotenv

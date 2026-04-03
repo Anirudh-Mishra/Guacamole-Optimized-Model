@@ -1,0 +1,9 @@
+{
+  "questions_compared": 80,
+  "our_model_average": 6.66,
+  "chatgpt_average": 7.5,
+  "performance_ratio": 88.8,
+  "paper_reference": "Guanaco-7B = 87.0% of ChatGPT",
+  "judge_model": "gpt-4o-mini",
+  "chatgpt_model": "gpt-3.5-turbo"
+}
