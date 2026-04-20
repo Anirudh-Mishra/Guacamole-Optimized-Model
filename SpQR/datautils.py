@@ -194,8 +194,8 @@ def get_loaders(name, nsamples=128, seed=0, seqlen=2048, eval_mode=False, model_
             try:
                 tokenizer = LlamaTokenizer.from_pretrained(model_path, use_fast=False)
             except Exception:
-                # Fallback to fast tokenizer if slow sentencepiece loader fails
-                tokenizer = LlamaTokenizer.from_pretrained(model_path, use_fast=True)
+                # Fallback to a robust fast tokenizer implementation
+                tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True, trust_remote_code=True)
 
             # fix for transformer 4.28.0.dev0 compatibility
             if tokenizer.bos_token_id != 1 or tokenizer.eos_token_id != 2:

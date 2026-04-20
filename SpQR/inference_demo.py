@@ -92,9 +92,8 @@ class InferenceDemo:
                 pretrained_model_path, use_fast=False, torchscript=self.torchscript
             )
         except Exception:
-            self.tokenizer = LlamaTokenizer.from_pretrained(
-                pretrained_model_path, use_fast=True, torchscript=self.torchscript
-            )
+            # fallback to AutoTokenizer fast backend if Llama slow loader fails
+            self.tokenizer = AutoTokenizer.from_pretrained(pretrained_model_path, use_fast=True, trust_remote_code=True)
         self.tokenizer.pad_token = self.tokenizer.eos_token
 
         self.model.eval()
