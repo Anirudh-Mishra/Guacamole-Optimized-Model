@@ -594,13 +594,17 @@ if __name__ == "__main__":
     if args.new_eval:
         datasets = ["wikitext2", "ptb-new", "c4-new"]
     for dataset in datasets:
-        testloader = get_loaders(
-            dataset,
-            seed=args.seed,
-            model_path=args.model_path,
-            seqlen=model.seqlen,
-            eval_mode=True,
-        )
+        try:
+            testloader = get_loaders(
+                dataset,
+                seed=args.seed,
+                model_path=args.model_path,
+                seqlen=model.seqlen,
+                eval_mode=True,
+            )
+        except Exception as e:
+            print(f"Skipping dataset {dataset} due to error: {e}")
+            continue
         args.dataset_name = dataset
         perplexity_eval(model, testloader, args, device)
 
