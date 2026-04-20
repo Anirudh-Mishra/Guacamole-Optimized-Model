@@ -386,7 +386,7 @@ def perplexity_eval(model, testenc, args, dev):
     )
     outs = torch.zeros_like(inps)
     for k, v in forward_args.items():
-        forward_args[k] = v.to(dev) if isinstance(v, torch.Tensor) else v
+        forward_args[k] = _move_forward_arg_to_device(v, dev)
 
     layers = get_layers(model)
     for i in trange(len(layers), desc="processing eval data by layer"):
