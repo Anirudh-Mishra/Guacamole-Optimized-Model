@@ -291,7 +291,8 @@ def quantize_spqr(model, dataloader, args, device):
                     .sqrt()
                 )
                 outs_batch_loss /= outs_batch.view(outs_batch.shape[0], -1).float().std(dim=1)
-                out_losses.append(outs_batch_loss.item())
+                # outs_batch_loss may be a vector (one value per sample); reduce to a scalar
+                out_losses.append(outs_batch_loss.mean().item())
             outs[j] = outs_batch
             if args.offload_activations:
                 outs[j] = outs[j].cpu()
