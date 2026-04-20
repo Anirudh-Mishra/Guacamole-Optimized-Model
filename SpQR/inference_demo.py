@@ -87,9 +87,14 @@ class InferenceDemo:
 
         self.model = self.model.to(device=self.device, dtype=self.dtype)
 
-        self.tokenizer = LlamaTokenizer.from_pretrained(
-            pretrained_model_path, use_fast=False, torchscript=self.torchscript
-        )
+        try:
+            self.tokenizer = LlamaTokenizer.from_pretrained(
+                pretrained_model_path, use_fast=False, torchscript=self.torchscript
+            )
+        except Exception:
+            self.tokenizer = LlamaTokenizer.from_pretrained(
+                pretrained_model_path, use_fast=True, torchscript=self.torchscript
+            )
         self.tokenizer.pad_token = self.tokenizer.eos_token
 
         self.model.eval()

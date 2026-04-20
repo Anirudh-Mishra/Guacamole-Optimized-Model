@@ -191,7 +191,11 @@ def get_loaders(name, nsamples=128, seed=0, seqlen=2048, eval_mode=False, model_
     else:
         # for datasets requiring tokenization
         if "llama" in model_path.lower():
-            tokenizer = LlamaTokenizer.from_pretrained(model_path, use_fast=False)
+            try:
+                tokenizer = LlamaTokenizer.from_pretrained(model_path, use_fast=False)
+            except Exception:
+                # Fallback to fast tokenizer if slow sentencepiece loader fails
+                tokenizer = LlamaTokenizer.from_pretrained(model_path, use_fast=True)
 
             # fix for transformer 4.28.0.dev0 compatibility
             if tokenizer.bos_token_id != 1 or tokenizer.eos_token_id != 2:
@@ -203,7 +207,10 @@ def get_loaders(name, nsamples=128, seed=0, seqlen=2048, eval_mode=False, model_
                     pass
                     print(f"bos/eos tokens unchanged: {tokenizer.bos_token_id=},  {tokenizer.eos_token_id=}")
         else:
-            tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False, trust_remote_code=True)
+            try:
+                tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False, trust_remote_code=True)
+            except Exception:
+                tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True, trust_remote_code=True)
 
         if name.lower() == "wikitext2":
             data = get_wikitext2(nsamples, seqlen, tokenizer, eval_mode=eval_mode)

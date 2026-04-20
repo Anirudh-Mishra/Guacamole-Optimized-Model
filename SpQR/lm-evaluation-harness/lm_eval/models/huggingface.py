@@ -236,7 +236,10 @@ class HuggingFaceAutoLM(BaseLM):
         """Returns a pre-trained tokenizer from a pre-trained tokenizer configuration."""
         if 'llama' in pretrained.lower() or 'alpaca' in pretrained.lower():
             from transformers import LlamaTokenizer
-            tokenizer = LlamaTokenizer.from_pretrained(pretrained)
+            try:
+                tokenizer = LlamaTokenizer.from_pretrained(pretrained, use_fast=False)
+            except Exception:
+                tokenizer = LlamaTokenizer.from_pretrained(pretrained, use_fast=True)
         else:
             tokenizer = self.AUTO_TOKENIZER_CLASS.from_pretrained(
                 pretrained if tokenizer is None else tokenizer,
