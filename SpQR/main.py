@@ -194,7 +194,10 @@ def quantize_spqr(model, dataloader, args, device):
     normal_outlier_count_global, w_count_global = 0, 0
 
     layers = get_layers(model)
-    for i in range(len(layers)):
+    start = getattr(args, "start_layer", 0) or 0
+    if start > 0:
+        print(f"Resuming quantization from layer {start}")
+    for i in range(start, len(layers)):
         print(f"\n---------------- Layer {i} of {len(layers)} ----------------")
         normal_outlier_count, w_count = 0, 0
         stats_payload = {}
@@ -449,6 +452,12 @@ if __name__ == "__main__":
     )
     parser.add_argument("--load", type=str, default=None, help="Path to load quantized statistics.")
     parser.add_argument("--save", type=str, default=False, help="Path to save quantized statistics.")
+    parser.add_argument(
+        "--start_layer",
+        type=int,
+        default=0,
+        help="Layer index to start quantization from (resume support).",
+    )
     parser.add_argument("--seed", type=int, default=0, help="Seed for sampling the calibration data.")
     parser.add_argument("--nsamples", type=int, default=128, help="Number of calibration data samples.")
     parser.add_argument(
@@ -552,6 +561,19 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+
+    # If a save directory already exists, prefer using it as the load source
+    # and auto-detect resume point (next missing layer). This allows restarting
+    # the same command and continuing from already-saved layers.
+    if args.save and os.path.exists(args.save):
+        if not args.load:
+            args.load = args.save
+        try:
+            existing = [int(name) for name in os.listdir(args.save) if name.isdigit()]
+            if existing:
+                args.start_layer = max(existing) + 1
+        except Exception:
+            pass
 
     if args.dataset == "custom":
         print(

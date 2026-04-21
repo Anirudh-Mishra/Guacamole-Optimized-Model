@@ -156,12 +156,24 @@ def load_quantized_model(model, load_path):
         layer = layers[i]
         sub_layers = find_sublayers(layer)
         for name in sub_layers:
-            quantized_params_dict = read_quant_weight_from_file(load_path, i, name)
-            sub_layers[name].weight = nn.Parameter(
-                layer_weight_dequantization(quantized_params_dict).to(sub_layers[name].weight.data.dtype)
-            )
+            try:
+                quantized_params_dict = read_quant_weight_from_file(load_path, i, name)
+            except Exception:
+                # missing or partial save for this sublayer — skip and leave dense weights
+                print(f"Warning: missing quant file for layer {i}/{name}, skipping")
+                continue
+            try:
+                dequant = layer_weight_dequantization(quantized_params_dict).to(sub_layers[name].weight.data.dtype)
+                sub_layers[name].weight = nn.Parameter(dequant)
+            except Exception as e:
+                print(f"Error dequantizing {i}/{name}: {e}, skipping")
+                continue
         layers[i] = layer
-    model.load_state_dict(torch.load(load_path + "/not_quantized_weights.pt"), strict=False)
+    # Load remaining not-quantized weights if present; tolerate missing file.
+    try:
+        model.load_state_dict(torch.load(load_path + "/not_quantized_weights.pt"), strict=False)
+    except Exception:
+        print("Warning: not_quantized_weights.pt missing or unreadable; continuing with current params")
     return model
 
 
