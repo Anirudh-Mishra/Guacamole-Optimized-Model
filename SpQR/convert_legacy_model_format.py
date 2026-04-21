@@ -9,6 +9,11 @@ except Exception:
     print("spqr_quant import failed; falling back to CPU-only conversion (dense weights will be reconstructed).")
     CPU_FALLBACK = True
 
+    # Define placeholders so type annotations and references don't raise NameError
+    ModelArgs = object
+    QuantizedLinear = object
+    SPQRLegacy = object
+
 from modelutils import layer_weight_dequantization
 from transformers import AutoConfig, AutoModelForCausalLM
 
