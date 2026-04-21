@@ -612,7 +612,8 @@ if __name__ == "__main__":
     quantize_model(model, args, device)
 
     print("\n============ Evaluating perplexity... ============")
-    torch.cuda.reset_peak_memory_stats()
+    if torch.cuda.is_available():
+        torch.cuda.reset_peak_memory_stats()
     datasets = ["wikitext2", "ptb", "c4"]
     if args.new_eval:
         datasets = ["wikitext2", "ptb-new", "c4-new"]
