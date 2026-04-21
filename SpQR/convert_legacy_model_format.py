@@ -2,7 +2,14 @@ import argparse
 import os
 
 import torch
-from spqr_quant.inference import ModelArgs, QuantizedLinear, SPQRLegacy
+try:
+    from spqr_quant.inference import ModelArgs, QuantizedLinear, SPQRLegacy
+    CPU_FALLBACK = False
+except Exception:
+    print("spqr_quant import failed; falling back to CPU-only conversion (dense weights will be reconstructed).")
+    CPU_FALLBACK = True
+
+from modelutils import layer_weight_dequantization
 from transformers import AutoConfig, AutoModelForCausalLM
 
 
@@ -102,18 +109,36 @@ def replace_and_save_quantized_layers(
             if output_per_layer_path is not None:
                 os.makedirs(os.path.join(output_per_layer_path, str(layer_id)), exist_ok=True)
 
-        if isinstance(m, torch.nn.Linear):
-            assert m.bias is None
-            legacy_tensor_path = os.path.join(legacy_model_path, f"{layer_id}", f"{parent_tensor_name}.{tensor_name}")
-            if os.path.exists(legacy_tensor_path):
-                spqr_uncompressed = load_legacy_tensor(legacy_tensor_path, model_args)
-                spqr_module = QuantizedLinear.from_legacy(spqr_uncompressed, model_args, "cpu")
-                if output_per_layer_path is not None:
-                    per_layer_tensor_path = os.path.join(
-                        output_per_layer_path, f"{layer_id}", f"{parent_tensor_name}.{tensor_name}"
-                    )
-                    torch.save(spqr_module, per_layer_tensor_path)
-                setattr(current_model, tensor_name, spqr_module)
+            if isinstance(m, torch.nn.Linear):
+                assert m.bias is None
+                legacy_tensor_path = os.path.join(legacy_model_path, f"{layer_id}", f"{parent_tensor_name}.{tensor_name}")
+                if os.path.exists(legacy_tensor_path):
+                    if not CPU_FALLBACK:
+                        spqr_uncompressed = load_legacy_tensor(legacy_tensor_path, model_args)
+                        spqr_module = QuantizedLinear.from_legacy(spqr_uncompressed, model_args, "cpu")
+                        if output_per_layer_path is not None:
+                            per_layer_tensor_path = os.path.join(
+                                output_per_layer_path, f"{layer_id}", f"{parent_tensor_name}.{tensor_name}"
+                            )
+                            torch.save(spqr_module, per_layer_tensor_path)
+                        setattr(current_model, tensor_name, spqr_module)
+                    else:
+                        # CPU fallback: reconstruct dense weight from legacy quant dict and replace with nn.Linear
+                        quant_dict = torch.load(legacy_tensor_path, map_location="cpu")
+                        try:
+                            dense_w = layer_weight_dequantization(quant_dict)
+                        except Exception:
+                            # If dequantization fails, skip replacement
+                            print(f"Failed to dequantize {legacy_tensor_path}; skipping replacement")
+                            continue
+                        lin = torch.nn.Linear(dense_w.size(1), dense_w.size(0), bias=False)
+                        lin.weight = torch.nn.Parameter(dense_w)
+                        if output_per_layer_path is not None:
+                            per_layer_tensor_path = os.path.join(
+                                output_per_layer_path, f"{layer_id}", f"{parent_tensor_name}.{tensor_name}"
+                            )
+                            torch.save(lin, per_layer_tensor_path)
+                        setattr(current_model, tensor_name, lin)
         else:
             replace_and_save_quantized_layers(
                 model_args, model_to_be_quantized, legacy_model_path, m, layer_id, tensor_name, output_per_layer_path
