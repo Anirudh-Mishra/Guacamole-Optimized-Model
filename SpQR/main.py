@@ -319,8 +319,13 @@ def quantize_spqr(model, dataloader, args, device):
 
         print(stats_payload)
 
-    print("=====================\nFinal stats:")
-    print(f"global_ol_share:  {normal_outlier_count_global / w_count_global:.3%}")
+    print("====================\nFinal stats:")
+    if w_count_global > 0:
+        global_ol_share = normal_outlier_count_global / w_count_global
+        print(f"global_ol_share:  {global_ol_share:.3%}")
+    else:
+        global_ol_share = 0.0
+        print("global_ol_share:  0.000% (no quantized weights found)")
 
     wbits_avg = get_average_number_of_bits(
         wbits=args.wbits,
@@ -331,7 +336,7 @@ def quantize_spqr(model, dataloader, args, device):
         groupsize=args.groupsize,
         qq_groupsize=args.qq_groupsize,
         round_zero=args.round_zero,
-        global_ol_n_share=normal_outlier_count_global / w_count_global,
+        global_ol_n_share=global_ol_share,
     )
     if save:
         torch.save(vars(args), save + "/args.pt")
