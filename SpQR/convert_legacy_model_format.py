@@ -8,11 +8,44 @@ try:
 except Exception:
     print("spqr_quant import failed; falling back to CPU-only conversion (dense weights will be reconstructed).")
     CPU_FALLBACK = True
+    # Provide lightweight fallback implementations so conversion can run on CPU
+    from dataclasses import dataclass
 
-    # Define placeholders so type annotations and references don't raise NameError
-    ModelArgs = object
+    @dataclass
+    class ModelArgs:
+        bits: int
+        beta1: int
+        beta2: int
+        sparse_compression: str
+
+        @staticmethod
+        def from_file(legacy_model_path: str, compression_strategy: str):
+            b = torch.load(os.path.join(legacy_model_path, "args.pt"))
+            bits = b.get("wbits", None)
+            beta1 = b.get("qq_groupsize", None)
+            beta2 = b.get("groupsize", None)
+            return ModelArgs(bits=bits, beta1=beta1, beta2=beta2, sparse_compression=compression_strategy)
+
+    @dataclass
+    class SPQRLegacy:
+        m: int
+        n: int
+        bits: int
+        W: torch.Tensor
+        beta1: int
+        beta2: int
+        W_s: torch.Tensor
+        W_z: torch.Tensor
+        W_s_s: torch.Tensor
+        W_s_z: torch.Tensor
+        W_z_s: torch.Tensor
+        W_z_z: torch.Tensor
+        row_offsets: torch.Tensor
+        col_ids: torch.Tensor
+        values: torch.Tensor
+        in_perm: torch.Tensor
+
     QuantizedLinear = object
-    SPQRLegacy = object
 
 from modelutils import layer_weight_dequantization
 from transformers import AutoConfig, AutoModelForCausalLM
